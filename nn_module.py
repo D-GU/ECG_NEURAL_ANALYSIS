@@ -38,7 +38,7 @@ steps = train_x.shape[0]
 
 class ConvNet(nn.Module):
     def __init__(self):
-        self.cv1 = nn.Conv2d(1)
+        super(ConvNet, self).__init__()
 
     def forward(self):
         pass
