@@ -1,28 +1,26 @@
-import math
-
 import torch
-import torch.nn as nn
 import numpy as np
-import torchvision
+import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
 
 from math import ceil
 from itertools import chain
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
-from torchvision.transforms import ToTensor
 
 # Define hyper parameters
+NUM_EPOCHS = 2
+BATCH_SIZE = 100
 VAL_SIZE = 2156
 TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-NUM_EPOCHS = 2
-BATCH_SIZE = 4
 LEARNING_RATE = 0.01
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Get device
+device = torch.device("cpu")
 
 
 def get_data(_path: str):
@@ -40,7 +38,7 @@ class ParametersDataset(Dataset):
 
     def __getitem__(self, index):
         sample_x = np.array([sample for sample in self.x[index]])
-        tensor_sample_x = torch.tensor(sample_x)
+        tensor_sample_x = torch.FloatTensor(sample_x)
         return tensor_sample_x, self.y[index]
 
     def __len__(self):
@@ -48,20 +46,37 @@ class ParametersDataset(Dataset):
 
 
 class NeuralNet(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, num_classes):
         super(NeuralNet, self).__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
-        self.linear2 = nn.Linear(hidden_size, 1)
-        self.softmax = nn.Softmax()
+        self.linear2 = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
         out = self.linear1(x)
         out = self.relu(out)
         out = self.linear2(out)
-        out = self.softmax(out)
 
         return out
+
+
+class ConvNeuralNet(nn.Module):
+    def __init__(self, in_channel, num_classes):
+        super(ConvNeuralNet, self).__init__()
+        self.conv1 = nn.Conv2d(in_channel, out_channels=100, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
+        self.conv1 = nn.Conv2d(100, out_channels=120, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.fc1 = nn.Linear(120 * 45 * 45, num_classes)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.fc1(x)
+
+        return x
 
 
 if __name__ == "__main__":
@@ -70,8 +85,25 @@ if __name__ == "__main__":
 
     n_iterations = ceil(TRAIN_SIZE / BATCH_SIZE)
 
-    # dummy loop
-    for epochs in range(NUM_EPOCHS):
+    # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
+    model = ConvNeuralNet(180 * 2, NUM_CLASSES)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    for epoch in range(NUM_EPOCHS):
         for i, (inputs, labels) in enumerate(dataloader):
-            if (i + 1) % 5 == 0:
-                print(f"epoch {epochs + 1} / {NUM_EPOCHS}, step {i + 1}/ {n_iterations}, inputs {inputs.shape}")
+
+            # inputs = inputs.reshape(-1, 180 * 2).to(device)
+
+            # fw
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            # bw
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i + 1) % 100 == 0:
+                print(f'epoch {epoch + 1}/{NUM_EPOCHS}, step {i + 1}/{TRAIN_SIZE}, loss = {loss.item():.4f}')
