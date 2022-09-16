@@ -1,54 +1,24 @@
-import torch
-import torch.nn as nn  # All NN modules
-import torch.optim as optim  # All optimisation algos
-import torch.nn.functional as func  # Activations functions
-import torchvision.transforms as transforms  # Transformations that can be applied to a dataset
+import torch.nn as nn
+import torch.nn.functional as F
 
-import pandas as pd
-
-from data_loader import get_data
-
-# Get the device to operate(train) a nn
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Get input size and number of classes
-input_size = 12 * 15
-num_classes = 5
-
-num_epochs = 10
-batch_size = 10
-
-# Добавить объяснение из книги о learning rate (позже)
-learning_rate = 0.001
-
-# Get train dataset
-train_x = get_data("train_ecg_parameters.npy")
-labels_tr = get_data("train_y.npy")
-
-# Get val dataset
-val_x = get_data("val_ecg_parameters.npy")
-labels_vl = get_data("val_y.npy")
-
-# Get classes
-classes = ([1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1])
-
-# Get steps
-steps = train_x.shape[0]
+from data_loader import ParametersDataset
 
 
-class ConvNet(nn.Module):
-    def __init__(self):
-        super(ConvNet, self).__init__()
+class ConvNeuralNet(nn.Module):
+    def __init__(self, in_channel, num_classes):
+        super(ConvNeuralNet, self).__init__()
+        self.conv1 = nn.Conv1d(in_channel, out_channels=10, kernel_size=1)
+        self.pool = nn.MaxPool1d(1)
+        self.conv2 = nn.Conv1d(10, out_channels=5, kernel_size=1)
+        self.fc1 = nn.Linear(2, num_classes)
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        # print(f'this is x - {x}')
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool(x)
+        # x = x.reshape(x.shape[0], -1)
+        x = self.fc1(x)
 
-
-model = ConvNet().to(device)
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-
-for epoch in range(num_epochs):
-    for i, (examples, labels) in (steps, (train_x, labels_tr)):
-        table = pd.DataFrame(train_x)
+        return x

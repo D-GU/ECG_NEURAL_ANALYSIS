@@ -7,7 +7,6 @@ import torchvision.transforms as transforms
 from math import ceil
 from itertools import chain
 from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pad_sequence
 
 # Define hyper parameters
 NUM_EPOCHS = 2
@@ -64,10 +63,10 @@ class NeuralNet(nn.Module):
 class ConvNeuralNet(nn.Module):
     def __init__(self, in_channel, num_classes):
         super(ConvNeuralNet, self).__init__()
-        self.conv1 = nn.Conv1d(in_channel, out_channels=10, kernel_size=1, stride=1, padding=0)
+        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=2, stride=1)
         self.pool = nn.MaxPool1d(1)
-        self.conv2 = nn.Conv1d(10, out_channels=5, kernel_size=1, stride=1, padding=0)
-        self.fc1 = nn.Linear(placeholder, num_classes)
+        self.conv2 = nn.Conv1d(180 - 5 + 1, out_channels=5, kernel_size=2, stride=5)
+        self.fc1 = nn.Linear(2, num_classes)
 
     def forward(self, x):
         # print(f'this is x - {x}')
@@ -81,6 +80,10 @@ class ConvNeuralNet(nn.Module):
         return x
 
 
+# Посчитать количество выходных слоев из одного слоя свертки (брать ширину свертки)
+# Посчитать количесвто сверточных слоев, чтобы к конце получилось 5 выходных слоев, которые можно трактовать как
+# Определенный класс для классификации
+
 if __name__ == "__main__":
     dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
     dataloader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     n_iterations = ceil(TRAIN_SIZE / BATCH_SIZE)
 
     # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
-    model = ConvNeuralNet(5, NUM_CLASSES)
+    model = ConvNeuralNet(2, NUM_CLASSES)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
@@ -98,7 +101,8 @@ if __name__ == "__main__":
 
             # Reshaping the input if needed
             # inputs = inputs.reshape(-1, 180 * 2).to(device)
-            inputs = inputs.permute(1, 0, 2)
+            inputs = inputs.permute(1, 2, 0)
+            print("Input reshape - {}".format(inputs.shape))
 
             # fw
             # print(labels)
