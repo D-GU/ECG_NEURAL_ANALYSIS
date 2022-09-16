@@ -11,13 +11,13 @@ from torch.nn.utils.rnn import pad_sequence
 
 # Define hyper parameters
 NUM_EPOCHS = 2
-BATCH_SIZE = 100
+BATCH_SIZE = 5
 VAL_SIZE = 2156
 TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.01 / 100000
 
 # Get device
 device = torch.device("cpu")
@@ -39,6 +39,7 @@ class ParametersDataset(Dataset):
     def __getitem__(self, index):
         sample_x = np.array([sample for sample in self.x[index]])
         tensor_sample_x = torch.FloatTensor(sample_x)
+
         return tensor_sample_x, self.y[index]
 
     def __len__(self):
@@ -63,17 +64,18 @@ class NeuralNet(nn.Module):
 class ConvNeuralNet(nn.Module):
     def __init__(self, in_channel, num_classes):
         super(ConvNeuralNet, self).__init__()
-        self.conv1 = nn.Conv2d(in_channel, out_channels=100, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
-        self.conv1 = nn.Conv2d(100, out_channels=120, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.fc1 = nn.Linear(120 * 45 * 45, num_classes)
+        self.conv1 = nn.Conv1d(in_channel, out_channels=10, kernel_size=1, stride=1, padding=0)
+        self.pool = nn.MaxPool1d(1)
+        self.conv2 = nn.Conv1d(10, out_channels=5, kernel_size=1, stride=1, padding=0)
+        self.fc1 = nn.Linear(placeholder, num_classes)
 
     def forward(self, x):
+        # print(f'this is x - {x}')
         x = F.relu(self.conv1(x))
         x = self.pool(x)
         x = F.relu(self.conv2(x))
         x = self.pool(x)
-        x = x.reshape(x.shape[0], -1)
+        # x = x.reshape(x.shape[0], -1)
         x = self.fc1(x)
 
         return x
@@ -86,19 +88,22 @@ if __name__ == "__main__":
     n_iterations = ceil(TRAIN_SIZE / BATCH_SIZE)
 
     # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
-    model = ConvNeuralNet(180 * 2, NUM_CLASSES)
+    model = ConvNeuralNet(5, NUM_CLASSES)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
+    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    model.train()
     for epoch in range(NUM_EPOCHS):
         for i, (inputs, labels) in enumerate(dataloader):
 
+            # Reshaping the input if needed
             # inputs = inputs.reshape(-1, 180 * 2).to(device)
+            inputs = inputs.permute(1, 0, 2)
 
             # fw
+            # print(labels)
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels.float())
 
             # bw
             optimizer.zero_grad()
