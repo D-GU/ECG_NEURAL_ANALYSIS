@@ -16,7 +16,7 @@ TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-LEARNING_RATE = 0.01 / 100000
+LEARNING_RATE = 0.01 / 100
 
 # Get device
 device = torch.device("cpu")
@@ -63,10 +63,10 @@ class NeuralNet(nn.Module):
 class ConvNeuralNet(nn.Module):
     def __init__(self, in_channel, num_classes):
         super(ConvNeuralNet, self).__init__()
-        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=2, stride=1)
+        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=2, stride=5)
         self.pool = nn.MaxPool1d(1)
         self.conv2 = nn.Conv1d(180 - 5 + 1, out_channels=5, kernel_size=2, stride=5)
-        self.fc1 = nn.Linear(2, num_classes)
+        self.fc1 = nn.Linear(7, num_classes)
 
     def forward(self, x):
         # print(f'this is x - {x}')
@@ -101,13 +101,13 @@ if __name__ == "__main__":
 
             # Reshaping the input if needed
             # inputs = inputs.reshape(-1, 180 * 2).to(device)
-            inputs = inputs.permute(1, 2, 0)
-            print("Input reshape - {}".format(inputs.shape))
+            inputs = inputs.permute(0, 2, 1)
+            # print("Input reshape - {}".format(inputs.shape))
 
             # fw
             # print(labels)
             outputs = model(inputs)
-            loss = criterion(outputs, labels.float())
+            loss = criterion(outputs, labels)
 
             # bw
             optimizer.zero_grad()
