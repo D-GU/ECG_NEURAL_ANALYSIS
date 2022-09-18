@@ -9,14 +9,14 @@ from itertools import chain
 from torch.utils.data import Dataset, DataLoader
 
 # Define hyper parameters
-NUM_EPOCHS = 2
+NUM_EPOCHS = 100
 BATCH_SIZE = 5
 VAL_SIZE = 2156
 TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-LEARNING_RATE = 0.01 / 100
+LEARNING_RATE = 0.001
 
 # Get device
 device = torch.device("cpu")
@@ -62,15 +62,17 @@ class NeuralNet(nn.Module):
 
 class ConvNeuralNet(nn.Module):
     def __init__(self, in_channel, num_classes):
+        # It does something with the first layer on the first iteration
         super(ConvNeuralNet, self).__init__()
-        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=2, stride=5)
+        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=10, stride=3)
         self.pool = nn.MaxPool1d(1)
-        self.conv2 = nn.Conv1d(180 - 5 + 1, out_channels=5, kernel_size=2, stride=5)
-        self.fc1 = nn.Linear(7, num_classes)
+        self.conv2 = nn.Conv1d(180 - 5 + 1, out_channels=5, kernel_size=10, stride=3)
+        self.fc1 = nn.Linear(16, num_classes)
 
     def forward(self, x):
         # print(f'this is x - {x}')
         x = F.relu(self.conv1(x))
+        print("After first conv layer - {}".format(x))
         x = self.pool(x)
         x = F.relu(self.conv2(x))
         x = self.pool(x)
@@ -78,6 +80,9 @@ class ConvNeuralNet(nn.Module):
         x = self.fc1(x)
 
         return x
+
+    def backward(self, x):
+        pass
 
 
 # Посчитать количество выходных слоев из одного слоя свертки (брать ширину свертки)
@@ -96,6 +101,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     model.train()
+
     for epoch in range(NUM_EPOCHS):
         for i, (inputs, labels) in enumerate(dataloader):
 
@@ -105,7 +111,6 @@ if __name__ == "__main__":
             # print("Input reshape - {}".format(inputs.shape))
 
             # fw
-            # print(labels)
             outputs = model(inputs)
             loss = criterion(outputs, labels)
 
