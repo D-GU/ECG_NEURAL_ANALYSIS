@@ -1,3 +1,5 @@
+import os
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -16,7 +18,7 @@ TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 
 # Get device
 device = torch.device("cpu")
@@ -63,16 +65,20 @@ class NeuralNet(nn.Module):
 class ConvNeuralNet(nn.Module):
     def __init__(self, in_channel, num_classes):
         # It does something with the first layer on the first iteration
+        # Applied more convolution layers to check
         super(ConvNeuralNet, self).__init__()
-        self.conv1 = nn.Conv1d(in_channel, out_channels=180 - 5 + 1, kernel_size=10, stride=3)
-        self.pool = nn.MaxPool1d(1)
-        self.conv2 = nn.Conv1d(180 - 5 + 1, out_channels=5, kernel_size=10, stride=3)
-        self.fc1 = nn.Linear(16, num_classes)
+        self.conv1 = nn.Conv1d(in_channels=in_channel, out_channels=180 - 5 + 1, kernel_size=21, stride=3)
+        self.pool = nn.MaxPool1d(2)
+        self.conv2 = nn.Conv1d(in_channels=180 - 5 + 1, out_channels=64, kernel_size=21, stride=3)
+        self.conv3 = nn.Conv1d(in_channels=64, out_channels=32, kernel_size=21, stride=3)
+        self.conv4 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=21, stride=3)
+        self.conv5 = nn.Conv1d(in_channels=16, out_channels=8, kernel_size=21, stride=3)
+        self.conv6 = nn.Conv1d(in_channels=8, out_channels=5, kernel_size=21, stride=3)
+        self.fc1 = nn.Linear(1, num_classes)
 
     def forward(self, x):
-        # print(f'this is x - {x}')
         x = F.relu(self.conv1(x))
-        print("After first conv layer - {}".format(x))
+        # print("After first conv layer - {}".format(x))
         x = self.pool(x)
         x = F.relu(self.conv2(x))
         x = self.pool(x)
