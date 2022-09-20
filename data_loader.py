@@ -50,36 +50,28 @@ class ParametersDataset(Dataset):
 
 
 class Block(nn.Module):
-    def __init__(self, in_channel, identity_downsample=None, stride=1):
+    def __init__(self, in_channel, use_1x1conv=False, stride=1):
         super(Block, self).__init__()
-        self.expansion = 4
-        self.conv1 = nn.LazyConv1d(in_channel, kernel_size=5, stride=1, padding=0)
+        self.conv1 = nn.LazyConv1d(in_channel, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.LazyBatchNorm1d()
-        self.conv2 = nn.LazyConv1d(in_channel, kernel_size=5, stride=1, padding=0)
+        self.conv2 = nn.LazyConv1d(in_channel, kernel_size=3, stride=1, padding=1)
         self.bn2 = nn.LazyBatchNorm1d()
-        self.conv3 = nn.LazyConv1d(in_channel, kernel_size=1, stride=1, padding=0)
-        self.bn3 = nn.LazyBatchNorm1d()
-        self.relu = nn.ReLU()
-        self.identity_downsample = identity_downsample
+
+        if use_1x1conv:
+            self.conv3 = nn.LazyConv1d(in_channel, kernel_size=1, stride=1)
+        else:
+            self.conv3 = None
 
     def forward(self, x):
-        identity = x
+        Y = F.relu(self.bn1(self.conv1(x)))
+        Y = self.bn2(self.conv2(Y))
 
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-        x = self.conv3(x)
-        x = self.bn3(x)
+        if self.conv3:
+            x = self.conv3(x)
 
-        if self.identity_downsample:
-            identity = self.identity_downsample(identity)
+        Y += x
 
-        x += identity
-
-        return self.relu(x)
+        return F.relu(Y)
 
 
 class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
@@ -87,25 +79,24 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         super(Resnet, self).__init__()
 
         self.in_chanel = 2
-        self.conv1 = nn.LazyConv1d(channels, kernel_size=7, stride=1, padding=3)
+        self.conv1 = nn.LazyConv1d(channels, kernel_size=7, stride=1, padding=1)
         self.bn1 = nn.LazyBatchNorm1d()
         self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool1d(kernel_size=7)
 
         # ResNet layers
-        self.layer1 = self.make_layer(block, layers[0], stride=1)
+        self.layer1 = self.make_layer(block, layers[0], stride=2)
         self.layer2 = self.make_layer(block, layers[1], stride=2)
         self.layer3 = self.make_layer(block, layers[2], stride=2)
         self.layer4 = self.make_layer(block, layers[3], stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool1d(1)
+        self.flatten = nn.Flatten()
         self.fc = nn.LazyLinear(num_classes)
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -115,6 +106,7 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         x = self.avgpool(x)
         x = x.reshape(x.shape[0], -1)
 
+        x = self.flatten(x)
         x = self.fc(x)
 
         return x
@@ -125,8 +117,10 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
 
         if stride != 1:
             identity_downsample = nn.Sequential(
-                nn.LazyConv1d(self.in_chanel, kernel_size=1, stride=stride),
-                nn.LazyBatchNorm1d())
+                nn.LazyConv1d(self.in_chanel, kernel_size=7, stride=stride),
+                nn.LazyBatchNorm1d(),
+                nn.ReLU(),
+                nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
 
         layers.append(block(self.in_chanel, identity_downsample, stride))
 
@@ -167,7 +161,7 @@ if __name__ == "__main__":
 
             # fw
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels.float())
 
             # bw
             optimizer.zero_grad()
