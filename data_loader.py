@@ -133,10 +133,6 @@ def ResNet_init(channels=2, num_classes=5):
     return ResNet(Block, [3, 4, 6, 3], channels, num_classes)
 
 
-# Посчитать количество выходных слоев из одного слоя свертки (брать ширину свертки)
-# Посчитать количесвто сверточных слоев, чтобы в конце получилось 5 выходных слоев, которые можно трактовать как
-# Определенный класс для классификации
-
 if __name__ == "__main__":
     dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
     dataloader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
