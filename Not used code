@@ -77,3 +77,4 @@ class ResNet(nn.Module):
             else:
                 blk.append(Residual(num_channels))
         return nn.Sequential(*blk)
+

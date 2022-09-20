@@ -90,7 +90,7 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         self.conv1 = nn.LazyConv1d(channels, kernel_size=7, stride=1, padding=3)
         self.bn1 = nn.LazyBatchNorm1d()
         self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool1d(1)
+        self.maxpool = nn.MaxPool1d(kernel_size=7)
 
         # ResNet layers
         self.layer1 = self.make_layer(block, layers[0], stride=1)
