@@ -74,9 +74,9 @@ class Block(nn.Module):
         return F.relu(Y)
 
 
-class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
+class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
     def __init__(self, block, layers, channels, num_classes):
-        super(Resnet, self).__init__()
+        super(ResNet, self).__init__()
 
         self.in_chanel = 2
         self.conv1 = nn.LazyConv1d(channels, kernel_size=7, stride=1, padding=1)
@@ -112,7 +112,6 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         return x
 
     def make_layer(self, block, num_res_blocks, stride):
-        identity_downsample = None
         layers = []
 
         if stride != 1:
@@ -122,7 +121,7 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
                 nn.ReLU(),
                 nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
 
-        layers.append(block(self.in_chanel, identity_downsample, stride))
+        layers.append(block(self.in_chanel, stride))
 
         for i in range(num_res_blocks - 1):
             layers.append(block(self.in_chanel))
@@ -130,8 +129,8 @@ class Resnet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         return nn.Sequential(*layers)
 
 
-def ResNet50(channels=2, num_classes=5):
-    return Resnet(Block, [3, 4, 6, 3], channels, num_classes)
+def ResNet_init(channels=2, num_classes=5):
+    return ResNet(Block, [3, 4, 6, 3], channels, num_classes)
 
 
 # Посчитать количество выходных слоев из одного слоя свертки (брать ширину свертки)
@@ -145,11 +144,11 @@ if __name__ == "__main__":
     n_iterations = ceil(TRAIN_SIZE / BATCH_SIZE)
 
     # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
-    model = ResNet50()
+    model = ResNet_init()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
-    # model.train()
+    model.train()
 
     for epoch in range(NUM_EPOCHS):
         for i, (inputs, labels) in enumerate(dataloader):
