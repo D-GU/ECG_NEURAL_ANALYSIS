@@ -113,16 +113,14 @@ class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         return x
 
     def make_layer(self, block, num_res_blocks, stride):
-        layers = []
+        layers = [block(self.in_chanel, stride)]
 
-        if stride != 1:
-            identity_downsample = nn.Sequential(
-                nn.LazyConv1d(self.in_chanel, kernel_size=7, stride=stride),
-                nn.LazyBatchNorm1d(),
-                nn.ReLU(),
-                nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
-
-        layers.append(block(self.in_chanel, stride))
+        # if stride != 1:
+        #     identity_downsample = nn.Sequential(
+        #         nn.LazyConv1d(self.in_chanel, kernel_size=7, stride=stride),
+        #         nn.LazyBatchNorm1d(),
+        #         nn.ReLU(),
+        #         nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
 
         for i in range(num_res_blocks - 1):
             layers.append(block(self.in_chanel))
