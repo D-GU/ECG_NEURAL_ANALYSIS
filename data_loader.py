@@ -12,7 +12,7 @@ from itertools import chain
 from torch.utils.data import Dataset, DataLoader
 
 # Define hyper parameters
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1
 BATCH_SIZE = 5
 VAL_SIZE = 2156
 TRAIN_SIZE = 17111
@@ -34,7 +34,8 @@ class ParametersDataset(Dataset):
         _data_x = get_data(_path_x)
         _data_y = get_data(_path_y)
 
-        self.x = np.array([list(chain(*numpy.nan_to_num(_data_x[sample][::], nan=0))) for sample in range(TRAIN_SIZE)])
+        self.x = np.array(
+            [list(chain(*numpy.nan_to_num(_data_x[sample][::], nan=0))) for sample in range(_data_x.shape[0])])
         self.y = torch.tensor(_data_y)
         self.n_samples = _data_x.shape[0]
 
@@ -137,6 +138,9 @@ if __name__ == "__main__":
     dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
     dataloader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
+    dataset_val = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
+    dataloader_val = DataLoader(dataset=dataset_val, batch_size=BATCH_SIZE, num_workers=0)
+
     n_iterations = ceil(TRAIN_SIZE / BATCH_SIZE)
 
     # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
@@ -151,8 +155,8 @@ if __name__ == "__main__":
 
             # Reshaping the input if needed
             # inputs = inputs.reshape(-1, 180 * 2).to(device)
-            inputs = inputs.permute(0, 2, 1)
-            # print("Input reshape - {}".format(inputs.shape))
+            inputs = inputs.permute(0, 2, 1).to(device)
+            labels = labels.to(device)
 
             # fw
             outputs = model(inputs)
@@ -165,3 +169,20 @@ if __name__ == "__main__":
 
             if (i + 1) % 100 == 0:
                 print(f'epoch {epoch + 1}/{NUM_EPOCHS}, step {i + 1}/{TRAIN_SIZE}, loss = {loss.item():.4f}')
+
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+
+        for i, (inputs, labels) in enumerate(dataloader_val):
+            inputs = inputs.permute(0, 2, 1).to(device)
+            labels = labels.to(device)
+            outputs = model(inputs)
+
+            _, prediction = torch.max(outputs, 1)
+            print(f'prediction = {prediction}, labels = {labels}')
+            n_samples += labels.shape[0]
+            n_correct += (prediction == labels).sum().item()
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'accuracy = {acc}')
