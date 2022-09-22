@@ -195,8 +195,16 @@ if __name__ == "__main__":
 
             # Доработать проверку данных, чтобы узнать точность
             for i, tens in enumerate(prediction):
+                tens = np.asarray(tens)
                 print(f'sample №{i}: sample - {tens}')
-                argmax_in_tensor = np.argmax(tens)
+                argmax_in_tensor = np.flatnonzero(tens == np.amax(tens))
+                print(argmax_in_tensor.flatten().tolist())
+
+                if argmax_in_tensor < 0.8:
+                    argmax_in_tensor = np.int(0.0)
+                else:
+                    argmax_in_tensor = np.int(1.0)
+
                 print(f'label №{i}: label - {labels[i]}')
                 print(f"Argmax in tensor: {argmax_in_tensor}")
             print('\n')
