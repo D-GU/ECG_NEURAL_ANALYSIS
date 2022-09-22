@@ -19,14 +19,24 @@ TRAIN_SIZE = 17111
 INPUT_SIZE = 360
 HIDDEN_SIZE = 100
 NUM_CLASSES = 5
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.001
 
 # Get device
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_data(_path: str):
     return np.load(_path, allow_pickle=True)
+
+
+def jackard_loss(set_a, set_b):
+    unity = np.union1d(set_b, set_b)
+    intersection = np.intersect1d(set_a, set_b)
+
+    subtraction_fwd = np.subtract(set_a, set_b)
+    subtraction_bwd = np.subtract(set_b, set_a)
+
+    return np.divide(intersection, np.add(unity, subtraction_fwd, subtraction_bwd))
 
 
 class ParametersDataset(Dataset):
@@ -35,7 +45,10 @@ class ParametersDataset(Dataset):
         _data_y = get_data(_path_y)
 
         self.x = np.array(
-            [list(chain(*numpy.nan_to_num(_data_x[sample][::], nan=0))) for sample in range(_data_x.shape[0])])
+            [
+                list(chain(*numpy.nan_to_num(_data_x[sample][::], nan=0))) for sample in range(_data_x.shape[0])
+            ]
+        )
         self.y = torch.tensor(_data_y)
         self.n_samples = _data_x.shape[0]
 
@@ -64,15 +77,15 @@ class Block(nn.Module):
             self.conv3 = None
 
     def forward(self, x):
-        Y = F.relu(self.bn1(self.conv1(x)))
-        Y = self.bn2(self.conv2(Y))
+        y = F.relu(self.bn1(self.conv1(x)))
+        y = self.bn2(self.conv2(y))
 
         if self.conv3:
             x = self.conv3(x)
 
-        Y += x
+        y += x
 
-        return F.relu(Y)
+        return F.relu(y)
 
 
 class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
@@ -122,7 +135,7 @@ class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
         #         nn.ReLU(),
         #         nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
 
-        for i in range(num_res_blocks - 1):
+        for blocks in range(num_res_blocks):
             layers.append(block(self.in_chanel))
 
         return nn.Sequential(*layers)
@@ -144,15 +157,14 @@ if __name__ == "__main__":
     # model = NeuralNet(input_size=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_classes=NUM_CLASSES)
     model = ResNet_init()
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
     model.train()
 
     for epoch in range(NUM_EPOCHS):
         for i, (inputs, labels) in enumerate(dataloader):
-
             # Reshaping the input if needed
-            # inputs = inputs.reshape(-1, 180 * 2).to(device)
+
             inputs = inputs.permute(0, 2, 1).to(device)
             labels = labels.to(device)
 
@@ -177,10 +189,17 @@ if __name__ == "__main__":
             labels = labels.to(device)
             outputs = model(inputs)
 
-            _, prediction = torch.max(outputs, 1)
-            print(f'prediction = {prediction}, labels = {labels}')
+            prediction = outputs
+
+            argmax_in_tensor = 0
+
+            # Доработать проверку данных, чтобы узнать точность
+            for i, tens in enumerate(prediction):
+                print(f'sample №{i}: sample - {tens}')
+                argmax_in_tensor = np.argmax(tens)
+                print(f'label №{i}: label - {labels[i]}')
+                print(f"Argmax in tensor: {argmax_in_tensor}")
+            print('\n')
+
             n_samples += labels.shape[0]
             n_correct += (prediction == labels).sum().item()
-
-        acc = 100.0 * n_correct / n_samples
-        print(f'accuracy = {acc}')
