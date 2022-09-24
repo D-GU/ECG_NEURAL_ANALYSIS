@@ -6,6 +6,8 @@ import pytorch_lightning as pl
 from data_loader import ParametersDataset
 from nn_module import ResNet_init
 from torch.utils.data import DataLoader
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 
 # Define hyper parameters
 NUM_EPOCHS = 100
@@ -82,21 +84,28 @@ if __name__ == "__main__":
     validation_dataset = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
     val_dataloader = DataLoader(dataset=validation_dataset, batch_size=BATCH_SIZE, num_workers=1)
 
-    model = ResNet_init()
-    train(model, dataloader, device)
+    # model = ResNet_init()
+    # train(model, dataloader, device)
 
-    # model = torch.load(file_name)
-    # model.eval()
-    #
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #
-    # with torch.no_grad():
-    #     for i, (ins, lbl) in enumerate(val_dataloader):
-    #         ins = ins.permute(0, 2, 1).to(device)
-    #         lbl = lbl.to(device)
-    #
-    #         outputs = model(ins)
-    #
-    #         for j, tens in enumerate(outputs):
-    #             print(f'Sample №{j}, sample: {tens}')
-    #             print(f'label №{j}, label: {lbl[j]}')
+    model = torch.load(file_name, map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+    model.eval()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    score = 0
+
+    # ar = np.array([1, 0, 0, 0, 1])
+    # argmax = np.where(ar == np.amax(ar))
+    # argmax = list(argmax[0])
+    # print(f"argmax = {argmax}")
+
+    threshold = 0.5
+
+    with torch.no_grad():
+        for i, (ins, lbl) in enumerate(val_dataloader):
+            ins = ins.permute(0, 2, 1).to(device)
+            lbl = lbl.to(device)
+
+            outputs = model(ins)
+            score += accuracy_score(y_true=lbl, y_pred=(outputs > threshold))
+
+    print(f"Score_sample = {score}")
