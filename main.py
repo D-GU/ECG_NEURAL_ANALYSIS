@@ -1,25 +1,21 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import pytorch_lightning as pl
+import torch.nn.functional as F
 
 from data_loader import ParametersDataset
 from nn_module import ResNet_init
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import multilabel_confusion_matrix
+from sklearn.metrics import classification_report
+from pytorch_lightning import Trainer
 
 # Define hyper parameters
-NUM_EPOCHS = 100
-BATCH_SIZE = 5
-VAL_SIZE = 2156
-TRAIN_SIZE = 17111
-HIDDEN_SIZE = 100
+NUM_EPOCHS = 150
+BATCH_SIZE = 64
 NUM_CLASSES = 5
-LEARNING_RATE = 0.01
-
-# Get device
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+lr = 0.01
 
 
 # def validation(_model, _dataloader):
@@ -39,44 +35,49 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 #     return _n_correct
 
-
 def train(
         _model,
         _dataloader,
-        _device,
 ):
-    file_name = "model_100_epochs_2.pth"
+    _file_name = "model_lightning_150_epochs_64_batch.pth"
 
-    _n_iterations = np.ceil(TRAIN_SIZE / BATCH_SIZE)
-    _criterion = nn.MSELoss()
-    _optimizer = torch.optim.SGD(_model.parameters(), lr=LEARNING_RATE)
+    trainer = Trainer(gpus=1, max_epochs=NUM_EPOCHS, fast_dev_run=False)
+    trainer.fit(_model)
 
-    _model.cuda()
+    torch.save(_model, _file_name)
 
-    for epoch in range(NUM_EPOCHS):
-        for i, (inputs, labels) in enumerate(_dataloader):
-            # Reshaping the input if needed
+    return
 
-            inputs = inputs.permute(0, 2, 1).to(_device)
-            labels = labels.to(_device)
 
-            # fw
-            outputs = _model(inputs)
-            loss = _criterion(outputs, labels.float())
+def score_check(_model, _dataloader):
+    _correct = 0
+    _score = 0
 
-            # bw
-            _optimizer.zero_grad()
-            loss.backward()
-            _optimizer.step()
+    _n_samples = 0
+    _n_correct = 0
 
-            if (i + 1) % 100 == 0:
-                print(f'epoch {epoch + 1}/{NUM_EPOCHS}, step {i + 1}/{TRAIN_SIZE}, loss = {loss.item():.4f}')
+    with torch.no_grad():
+        for num_in_batch, (_ins, _lbl) in enumerate(_dataloader):
+            _ins = _ins.permute(0, 2, 1)
+            _outputs = _model(_ins)
 
-    torch.save(model, file_name)
+            _predicted = []
+            _threshold = 0.5
+
+            for num_tensor, tensor in enumerate(_outputs):
+                tensor[tensor >= _threshold] = 1
+                tensor[tensor < _threshold] = 0
+
+            conf_matrix = multilabel_confusion_matrix(_lbl, _outputs)
+
+            labels_names = ["A", "B", "C", "D", "E"]
+            _classification_report = classification_report(_lbl, _outputs, target_names=labels_names)
+            print(_classification_report)
+    return _score
 
 
 if __name__ == "__main__":
-    file_name = "model_100_epochs_1.pth"
+    file_name = "model_lightning_100_epochs_MLML.pth"
 
     train_dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
     dataloader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, num_workers=1)
@@ -85,27 +86,8 @@ if __name__ == "__main__":
     val_dataloader = DataLoader(dataset=validation_dataset, batch_size=BATCH_SIZE, num_workers=1)
 
     # model = ResNet_init()
-    # train(model, dataloader, device)
-
-    model = torch.load(file_name, map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+    model = torch.load(file_name)
     model.eval()
+    # train(model, dataloader)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    score = 0
-
-    # ar = np.array([1, 0, 0, 0, 1])
-    # argmax = np.where(ar == np.amax(ar))
-    # argmax = list(argmax[0])
-    # print(f"argmax = {argmax}")
-
-    threshold = 0.5
-
-    with torch.no_grad():
-        for i, (ins, lbl) in enumerate(val_dataloader):
-            ins = ins.permute(0, 2, 1).to(device)
-            lbl = lbl.to(device)
-
-            outputs = model(ins)
-            score += accuracy_score(y_true=lbl, y_pred=(outputs > threshold))
-
-    print(f"Score_sample = {score}")
+    score_check(model, val_dataloader)

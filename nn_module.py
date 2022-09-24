@@ -1,8 +1,15 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import pytorch_lightning as pl
+import torch.optim
+
+from torch.utils.data import DataLoader
+from data_loader import ParametersDataset
+
+BATCH_SIZE = 32
 
 
-class Block(nn.Module):
+class Block(pl.LightningModule):
     def __init__(self, in_channel, use_1x1conv=False, stride=1):
         super(Block, self).__init__()
         self.conv1 = nn.LazyConv1d(in_channel, kernel_size=3, stride=1, padding=1)
@@ -27,14 +34,15 @@ class Block(nn.Module):
         return F.relu(y)
 
 
-class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
-    def __init__(self, block, layers, channels, num_classes):
+class ResNet(pl.LightningModule):  # [3, 4, 6, 3] - how many times to use blocks
+    def __init__(self, block, layers, channels, num_classes, learning_rate):
         super(ResNet, self).__init__()
 
         self.in_chanel = 2
         self.conv1 = nn.LazyConv1d(channels, kernel_size=7, stride=1, padding=1)
         self.bn1 = nn.LazyBatchNorm1d()
         self.relu = nn.ReLU()
+        self.learning_rate = learning_rate
 
         # ResNet layers
         self.layer1 = self.make_layer(block, layers[0], stride=2)
@@ -67,18 +75,30 @@ class ResNet(nn.Module):  # [3, 4, 6, 3] - how many times to use blocks
     def make_layer(self, block, num_res_blocks, stride):
         layers = [block(self.in_chanel, stride)]
 
-        # if stride != 1:
-        #     identity_downsample = nn.Sequential(
-        #         nn.LazyConv1d(self.in_chanel, kernel_size=7, stride=stride),
-        #         nn.LazyBatchNorm1d(),
-        #         nn.ReLU(),
-        #         nn.MaxPool1d(kernel_size=3, stride=2, padding=1))
-
         for blocks in range(num_res_blocks):
             layers.append(block(self.in_chanel))
 
         return nn.Sequential(*layers)
 
+    def configure_optimizers(self):
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.learning_rate)
+        return optimizer
+
+    def training_step(self, batch, batch_idx):
+        inputs, labels = batch
+        inputs = inputs.permute(0, 2, 1)
+        labels = labels
+
+        # fw
+        outputs = self(inputs)
+        loss = F.mse_loss(outputs, labels.float())
+
+        return {"loss": loss}
+
+    def train_dataloader(self):
+        train_dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
+        return DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, num_workers=4)
+
 
 def ResNet_init(channels=2, num_classes=5):
-    return ResNet(Block, [3, 4, 6, 3], channels, num_classes)
+    return ResNet(Block, [3, 4, 6, 3], channels, num_classes, learning_rate=1e-5)
