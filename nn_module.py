@@ -6,7 +6,7 @@ import torch.optim
 from torch.utils.data import DataLoader
 from data_loader import ParametersDataset
 
-BATCH_SIZE = 32
+BATCH_SIZE = 5
 
 
 class Block(pl.LightningModule):
@@ -91,7 +91,7 @@ class ResNet(pl.LightningModule):  # [3, 4, 6, 3] - how many times to use blocks
 
         # fw
         outputs = self(inputs)
-        loss = F.mse_loss(outputs, labels.float())
+        loss = F.binary_cross_entropy(outputs, labels.float())
 
         return {"loss": loss}
 
