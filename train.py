@@ -17,4 +17,4 @@ def train(_model, _filename: str):
 
 if __name__ == "__main__":
     model = ResNet50()
-    train(_model=model, _filename="ResNet50_MLML_EPOCHS_32_BATCH_16.pth")
+    train(_model=model, _filename="name.pth")

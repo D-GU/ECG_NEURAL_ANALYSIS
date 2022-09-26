@@ -18,7 +18,7 @@ class Block(nn.Module):
         self.bn2 = nn.BatchNorm1d(out_channels)
         self.conv3 = nn.Conv1d(out_channels, out_channels * self.expansion, kernel_size=1, stride=1, padding=0)
         self.bn3 = nn.BatchNorm1d(out_channels * self.expansion)
-        self.relu = F.leaky_relu
+        self.relu = F.relu
         self.identity_downsample = identity_downsample
 
     def forward(self, x):
@@ -49,10 +49,10 @@ class ResNet(pl.LightningModule):
     def __init__(self, Block, layers, in_channels, num_classes):
         super(ResNet, self).__init__()
         self.in_channels = 2
-        self.conv1 = nn.Conv1d(in_channels, 2, kernel_size=7 * 2, stride=2, padding=3)
+        self.conv1 = nn.Conv1d(in_channels, 2, kernel_size=7 * 3, stride=2, padding=3)
         self.bn1 = nn.BatchNorm1d(2)
-        self.relu = F.leaky_relu
-        self.maxpool = nn.MaxPool1d(kernel_size=3 * 2, stride=2, padding=1)
+        self.relu = F.relu
+        self.maxpool = nn.MaxPool1d(kernel_size=3 * 3, stride=2, padding=1)
 
         self.layer1 = self.make_layer(Block, layers[0], out_channels=64, stride=1)
         self.layer2 = self.make_layer(Block, layers[1], out_channels=128, stride=2)
@@ -100,7 +100,7 @@ class ResNet(pl.LightningModule):
         return nn.Sequential(*layers)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -110,7 +110,7 @@ class ResNet(pl.LightningModule):
 
         # fw
         outputs = self(inputs)
-        loss = nn.MultiLabelMarginLoss()(outputs, labels)
+        loss = F.multilabel_soft_margin_loss(outputs, labels)
 
         return {"loss": loss}
 
@@ -132,7 +132,8 @@ class ResNet(pl.LightningModule):
 
         # fw
         outputs = self(inputs)
-        loss = nn.MultiLabelMarginLoss()(outputs, labels)
+        loss = F.multilabel_soft_margin_loss(outputs, labels)
+        # loss = nn.MultiLabelMarginLoss()(outputs, labels)
 
         return {"val_loss": loss}
 
@@ -142,4 +143,4 @@ class ResNet(pl.LightningModule):
 
 
 def ResNet50(in_channels=2, num_classes=hyperparameters["num_classes"]):
-    return ResNet(Block, [3, 4, 23, 3], in_channels, num_classes)
+    return ResNet(Block, [4, 6, 36, 4], in_channels, num_classes)
