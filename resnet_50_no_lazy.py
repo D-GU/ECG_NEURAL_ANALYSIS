@@ -8,9 +8,9 @@ from data_loader import ParametersDataset
 from hyperparameters import hyperparameters
 
 
-class Block(nn.Module):
+class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels, identity_downsample=None, stride=1):
-        super(Block, self).__init__()
+        super(ResBlock, self).__init__()
         self.expansion = 4
         self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=1, padding=0)
         self.bn1 = nn.BatchNorm1d(out_channels)
@@ -45,8 +45,8 @@ class Block(nn.Module):
 
 
 class ResNet(pl.LightningModule):
-    # layers is a list that contains how many times we should use Block
-    def __init__(self, Block, layers, in_channels, num_classes):
+    # layers is a list that contains how many times we should use ResBlock
+    def __init__(self, ResBlock, layers, in_channels, num_classes):
         super(ResNet, self).__init__()
         self.in_channels = 2
         self.conv1 = nn.Conv1d(in_channels, 2, kernel_size=3, stride=1, padding=0)
@@ -54,10 +54,10 @@ class ResNet(pl.LightningModule):
         self.relu = F.relu6
         self.maxpool = nn.MaxPool1d(kernel_size=1, stride=1, padding=0)
 
-        self.layer1 = self.make_layer(Block, layers[0], out_channels=64, stride=1)
-        self.layer2 = self.make_layer(Block, layers[1], out_channels=128, stride=2)
-        self.layer3 = self.make_layer(Block, layers[2], out_channels=256, stride=2)
-        self.layer4 = self.make_layer(Block, layers[3], out_channels=512, stride=2)
+        self.layer1 = self.make_layer(ResBlock, layers[0], out_channels=64, stride=1)
+        self.layer2 = self.make_layer(ResBlock, layers[1], out_channels=128, stride=2)
+        self.layer3 = self.make_layer(ResBlock, layers[2], out_channels=256, stride=2)
+        self.layer4 = self.make_layer(ResBlock, layers[3], out_channels=512, stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Linear(512 * 4, num_classes)
@@ -81,7 +81,7 @@ class ResNet(pl.LightningModule):
 
         return x
 
-    def make_layer(self, Block, num_res_blocks, out_channels, stride):
+    def make_layer(self, ResBlock, num_res_blocks, out_channels, stride):
         identity_downsample = None
         layers = []
 
@@ -91,11 +91,11 @@ class ResNet(pl.LightningModule):
                 nn.BatchNorm1d(out_channels * 4)
             )
 
-        layers.append(Block(self.in_channels, out_channels, identity_downsample, stride))
+        layers.append(ResBlock(self.in_channels, out_channels, identity_downsample, stride))
         self.in_channels = out_channels * 4
 
         for i in range(num_res_blocks - 1):
-            layers.append(Block(self.in_channels, out_channels))
+            layers.append(ResBlock(self.in_channels, out_channels))
 
         return nn.Sequential(*layers)
 
@@ -145,4 +145,4 @@ class ResNet(pl.LightningModule):
 
 
 def ResNet50(in_channels=2, num_classes=hyperparameters["num_classes"]):
-    return ResNet(Block, [4, 6, 36, 4], in_channels, num_classes)
+    return ResNet(ResBlock, [4, 6, 36, 4], in_channels, num_classes)
