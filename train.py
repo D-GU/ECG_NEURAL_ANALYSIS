@@ -6,7 +6,7 @@ from resnet_50_no_lazy import ResNet50
 
 
 def train(_model, _filename: str):
-    trainer = Trainer(gpus=1, max_epochs=hyperparameters["batch_size"], fast_dev_run=False)
+    trainer = Trainer(gpus=1, max_epochs=hyperparameters["num_epochs"], auto_lr_find=True)
     trainer.tune(_model)
 
     trainer.fit(_model)

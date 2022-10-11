@@ -3,7 +3,7 @@ import numpy as np
 
 from data_loader import ParametersDataset
 from torch.utils.data import DataLoader
-from sklearn.metrics import multilabel_confusion_matrix
+from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
 from hyperparameters import hyperparameters
 from pandas import DataFrame
 
@@ -51,7 +51,7 @@ def score_check(_model, _dataloader):
 
 
 if __name__ == "__main__":
-    file_name = "ResNet50_MLML_EPOCHS_100_BATCH_100.pth"
+    file_name = "ResNet.pth"
 
     validation_dataset = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
     val_dataloader = DataLoader(dataset=validation_dataset, batch_size=hyperparameters["batch_size"], num_workers=4)

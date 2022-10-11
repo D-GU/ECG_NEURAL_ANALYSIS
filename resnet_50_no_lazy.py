@@ -12,13 +12,13 @@ class Block(nn.Module):
     def __init__(self, in_channels, out_channels, identity_downsample=None, stride=1):
         super(Block, self).__init__()
         self.expansion = 4
-        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=1, padding=0)
         self.bn1 = nn.BatchNorm1d(out_channels)
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=1, stride=stride, padding=1)
         self.bn2 = nn.BatchNorm1d(out_channels)
         self.conv3 = nn.Conv1d(out_channels, out_channels * self.expansion, kernel_size=1, stride=1, padding=0)
         self.bn3 = nn.BatchNorm1d(out_channels * self.expansion)
-        self.relu = F.relu
+        self.relu = F.relu6
         self.identity_downsample = identity_downsample
 
     def forward(self, x):
@@ -49,10 +49,10 @@ class ResNet(pl.LightningModule):
     def __init__(self, Block, layers, in_channels, num_classes):
         super(ResNet, self).__init__()
         self.in_channels = 2
-        self.conv1 = nn.Conv1d(in_channels, 2, kernel_size=7 * 3, stride=2, padding=3)
+        self.conv1 = nn.Conv1d(in_channels, 2, kernel_size=3, stride=1, padding=0)
         self.bn1 = nn.BatchNorm1d(2)
-        self.relu = F.relu
-        self.maxpool = nn.MaxPool1d(kernel_size=3 * 3, stride=2, padding=1)
+        self.relu = F.relu6
+        self.maxpool = nn.MaxPool1d(kernel_size=1, stride=1, padding=0)
 
         self.layer1 = self.make_layer(Block, layers[0], out_channels=64, stride=1)
         self.layer2 = self.make_layer(Block, layers[1], out_channels=128, stride=2)
@@ -106,7 +106,7 @@ class ResNet(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         inputs = inputs.permute(0, 2, 1)
-        labels = labels
+        labels = labels.float()
 
         # fw
         outputs = self(inputs)
@@ -116,7 +116,10 @@ class ResNet(pl.LightningModule):
 
     def train_dataloader(self):
         train_dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
-        return DataLoader(dataset=train_dataset, batch_size=hyperparameters["batch_size"], num_workers=4, shuffle=True)
+        return DataLoader(dataset=train_dataset,
+                          batch_size=hyperparameters["batch_size"],
+                          num_workers=4,
+                          shuffle=True)
 
     def val_dataloader(self):
         validation_dataset = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
@@ -128,12 +131,11 @@ class ResNet(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
         inputs = inputs.permute(0, 2, 1)
-        labels = labels
+        labels = labels.float()
 
         # fw
         outputs = self(inputs)
         loss = F.multilabel_soft_margin_loss(outputs, labels)
-        # loss = nn.MultiLabelMarginLoss()(outputs, labels)
 
         return {"val_loss": loss}
 
