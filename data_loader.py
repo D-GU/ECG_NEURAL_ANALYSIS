@@ -24,7 +24,7 @@ class ParametersDataset(Dataset):
 
     def __getitem__(self, index):
         sample_x = np.array([sample for sample in self.x[index]])
-        sample_x = np.array([np.nan_to_num(parameter, nan=0.0) for parameter in sample_x])
+        sample_x = np.array([np.nan_to_num(parameter, nan=0) for parameter in sample_x])
         tensor_sample_x = torch.FloatTensor(sample_x)
 
         return tensor_sample_x, self.y[index]
