@@ -3,10 +3,10 @@ import torch
 from pytorch_lightning import Trainer
 from hyperparameters import hyperparameters
 from resnet_50_no_lazy import ResNet50
-
+from LSTM_RNN import lstm_init
 
 def train(_model, _filename: str):
-    trainer = Trainer(gpus=1, max_epochs=hyperparameters["num_epochs"], auto_lr_find=True)
+    trainer = Trainer(gpus=1, max_epochs=hyperparameters["num_epochs"])
     trainer.tune(_model)
 
     trainer.fit(_model)
@@ -16,5 +16,5 @@ def train(_model, _filename: str):
 
 
 if __name__ == "__main__":
-    model = ResNet50()
+    model = lstm_init()
     train(_model=model, _filename="RN.pth")

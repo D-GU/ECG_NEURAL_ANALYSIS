@@ -13,12 +13,13 @@ from hyperparameters import hyperparameters
 class LSTM(pl.LightningModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super(LSTM, self).__init__()
+        self.learning_rate = 1e-4
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
         # x -> (batch size, seq, input size)
 
-        self.fc = nn.Linear(hidden_size, enumerate)
+        self.fc = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
@@ -40,6 +41,7 @@ class LSTM(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         inputs = inputs.reshape(-1, hyperparameters["seq_length"], hyperparameters["input_size"])
+        inputs = inputs.permute(0, 2, 1)
         labels = labels
 
         # fw
@@ -61,6 +63,7 @@ class LSTM(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
+        inputs.reshape(-1, hyperparameters["seq_length"], hyperparameters["input_size"])
         inputs = inputs.permute(0, 2, 1)
         labels = labels
 
@@ -77,9 +80,9 @@ class LSTM(pl.LightningModule):
 
 
 def lstm_init(
-        input_size=hyperparameters["input_size"],
-        hidden_size=hyperparameters["hidden_size"],
-        num_layers=hyperparameters["num_layers"],
-        num_classes=hyperparameters["num_classes"],
+        input_size=180,
+        hidden_size=500,
+        num_layers=120,
+        num_classes=5,
 ):
     return LSTM(input_size, hidden_size, num_layers, num_classes)
