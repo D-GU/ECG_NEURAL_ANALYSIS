@@ -2,7 +2,6 @@ import torch
 
 from pytorch_lightning import Trainer
 from hyperparameters import hyperparameters
-from resnet_50_no_lazy import ResNet50
 from LSTM_RNN import lstm_init
 
 def train(_model, _filename: str):

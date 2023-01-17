@@ -31,7 +31,7 @@ class LSTM(pl.LightningModule):
 
         # h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
         # c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        #
+        # #
         # out, _ = self.lstm(x, (h0, c0))
         # # out: batch, seq_len, hidden_size
         # # out (N, 180, 128)

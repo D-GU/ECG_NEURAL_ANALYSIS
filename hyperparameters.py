@@ -1,3 +1,4 @@
+# Needed hyperparameters
 hyperparameters = {
     "num_epochs": 250,
     "num_classes": 5,

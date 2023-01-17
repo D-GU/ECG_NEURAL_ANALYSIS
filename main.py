@@ -3,7 +3,7 @@ import numpy as np
 
 from data_loader import ParametersDataset
 from torch.utils.data import DataLoader
-from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
+from sklearn.metrics import multilabel_confusion_matrix
 from hyperparameters import hyperparameters
 from pandas import DataFrame
 
