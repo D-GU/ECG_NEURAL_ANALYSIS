@@ -17,4 +17,4 @@ def train(_model, _filename: str):
 
 if __name__ == "__main__":
     model = lstm_init()
-    train(_model=model, _filename="RN.pth")
+    train(_model=model, _filename="lstm_ecg_features_try_5.pth")

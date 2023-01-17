@@ -16,23 +16,30 @@ class LSTM(pl.LightningModule):
         self.learning_rate = 1e-4
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, dropout=0.2)
         # x -> (batch size, seq, input size)
 
         self.fc = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        # self.lstm.flatten_parameters()
 
-        out, _ = self.lstm(x, (h0, c0))
-        # out: batch, seq_len, hidden_size
-        # out (N, 180, 128)
-        # out (N, 128) - needed
-        out = out[:, -1, :]
-        out = self.fc(out)
+        lstm_out, _ = self.lstm(x)
+        y_pred = self.fc(lstm_out[:, -1])
 
-        return out
+        return y_pred
+
+        # h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        # c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
+        #
+        # out, _ = self.lstm(x, (h0, c0))
+        # # out: batch, seq_len, hidden_size
+        # # out (N, 180, 128)
+        # # out (N, 128) - needed
+        # out = out[:, -1, :]
+        # out = self.fc(out)
+        #
+        # return out
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -52,14 +59,21 @@ class LSTM(pl.LightningModule):
 
     def train_dataloader(self):
         train_dataset = ParametersDataset("train_ecg_parameters.npy", "train_y.npy")
-        return DataLoader(dataset=train_dataset, batch_size=hyperparameters["batch_size"], num_workers=4, shuffle=True)
+        return DataLoader(
+            dataset=train_dataset,
+            batch_size=hyperparameters["batch_size"],
+            num_workers=4,
+            shuffle=True
+        )
 
     def val_dataloader(self):
         validation_dataset = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
-        return DataLoader(dataset=validation_dataset,
-                          batch_size=hyperparameters["batch_size"],
-                          num_workers=4,
-                          shuffle=False)
+        return DataLoader(
+            dataset=validation_dataset,
+            batch_size=hyperparameters["batch_size"],
+            num_workers=4,
+            shuffle=False
+        )
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
@@ -80,9 +94,9 @@ class LSTM(pl.LightningModule):
 
 
 def lstm_init(
-        input_size=180,
-        hidden_size=500,
-        num_layers=120,
-        num_classes=5,
+        input_size=hyperparameters["input_size_lstm"],
+        hidden_size=hyperparameters["hidden_size"],
+        num_layers=hyperparameters["num_layers"],
+        num_classes=hyperparameters["num_classes"],
 ):
     return LSTM(input_size, hidden_size, num_layers, num_classes)

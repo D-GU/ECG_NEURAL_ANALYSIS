@@ -51,7 +51,7 @@ def score_check(_model, _dataloader):
 
 
 if __name__ == "__main__":
-    file_name = "ResNet_50_epochs.pth"
+    file_name = "lstm_ecg_features_try_5.pth"
 
     validation_dataset = ParametersDataset("val_ecg_parameters.npy", "val_y.npy")
     val_dataloader = DataLoader(dataset=validation_dataset, batch_size=hyperparameters["batch_size"], num_workers=4)
